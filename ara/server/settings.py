@@ -4,6 +4,7 @@
 import os
 import textwrap
 import warnings
+from datetime import datetime
 
 import tzlocal
 from django.utils.crypto import get_random_string
@@ -114,6 +115,13 @@ DATABASE_HOST = settings.get("DATABASE_HOST", None)
 DATABASE_PORT = settings.get("DATABASE_PORT", None)
 DATABASE_CONN_MAX_AGE = settings.get("DATABASE_CONN_MAX_AGE", 0)
 DATABASE_OPTIONS = settings.get("DATABASE_OPTIONS", {})
+
+DATABASE_NAME_TEMPLATE = settings.get("DATABASE_NAME_TEMPLATE", None)
+if DATABASE_NAME_TEMPLATE:
+    # Interpolate env & current datetime into the template:
+    # DATABASE_NAME_TEMPLATE = "/var/www/{now:%Y/%m/%d}/{env[ENVIRONMENT]}/ansible.sqlite"
+    context = {"env": os.environ, "now": datetime.utcnow()}
+    DATABASE_NAME = DATABASE_NAME_TEMPLATE.format(**context)
 
 DATABASES = {
     "default": {
@@ -255,6 +263,11 @@ ARA_SETTINGS = os.getenv("ARA_SETTINGS", DEFAULT_SETTINGS)
 if not os.path.isdir(BASE_DIR):
     print("[ara] Creating data & configuration directory: %s" % BASE_DIR)
     os.makedirs(BASE_DIR, mode=0o700)
+
+_database_dir = os.path.dirname(DATABASE_NAME)
+if "sqlite" in DATABASE_ENGINE and not os.path.isdir(_database_dir):
+    print("[ara] Creating database directory: %s" % _database_dir)
+    os.makedirs(_database_dir, mode=0o700)
 
 if not os.path.exists(DEFAULT_SETTINGS) and "ARA_SETTINGS" not in os.environ:
     SETTINGS = dict(
